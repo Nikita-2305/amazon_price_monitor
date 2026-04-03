@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BearingWatch — Track. Compete. Win.</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', sans-serif; background: #f0f7f7; color: #1a3a3a; }
+
+  /* Navbar */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 60px;
+    background: #fff;
+    border-bottom: 1px solid #e0eeee;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-icon {
+    width: 42px; height: 42px; background: #1a8c8c;
+    border-radius: 10px; display: flex; align-items: center;
+    justify-content: center;
+  }
+  .logo-icon svg { width: 24px; height: 24px; }
+  .logo-name { font-size: 22px; font-weight: 700; color: #1a3a3a; }
+  .nav-links { display: flex; align-items: center; gap: 32px; }
+  .nav-links a { text-decoration: none; color: #1a3a3a; font-size: 15px; }
+  .btn-login {
+    padding: 9px 24px; border: 1.5px solid #1a3a3a;
+    border-radius: 8px; font-size: 15px; font-weight: 500;
+    background: transparent; cursor: pointer; color: #1a3a3a;
+    text-decoration: none;
+  }
+  .btn-login:hover { background: #f0f7f7; }
+
+  /* Hero */
+  .hero {
+    min-height: calc(100vh - 80px);
+    background: linear-gradient(135deg, #d6f0f0 0%, #e8f5f5 40%, #f5fbfb 100%);
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 60px 20px;
+    position: relative; overflow: hidden;
+  }
+  .hero-badge {
+    display: inline-block;
+    background: rgba(26,140,140,0.12);
+    color: #1a8c8c; font-size: 14px; font-weight: 600;
+    padding: 6px 18px; border-radius: 20px; margin-bottom: 28px;
+  }
+  .hero h1 {
+    font-size: 62px; font-weight: 800; line-height: 1.1;
+    color: #1a3a3a; margin-bottom: 16px;
+  }
+  .hero h1 span { color: #1a8c8c; }
+  .hero p {
+    font-size: 18px; color: #4a6a6a; max-width: 580px;
+    line-height: 1.7; margin-bottom: 40px;
+  }
+  .hero-btns { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; }
+  .btn-primary {
+    padding: 14px 36px; background: #1a8c8c; color: #fff;
+    border: none; border-radius: 10px; font-size: 16px;
+    font-weight: 600; cursor: pointer; text-decoration: none;
+    transition: background 0.2s;
+  }
+  .btn-primary:hover { background: #157070; }
+  .btn-secondary {
+    padding: 14px 36px; background: transparent; color: #1a3a3a;
+    border: 1.5px solid #1a3a3a; border-radius: 10px;
+    font-size: 16px; font-weight: 600; cursor: pointer;
+    text-decoration: none; transition: background 0.2s;
+  }
+  .btn-secondary:hover { background: rgba(0,0,0,0.05); }
+
+  /* Bar chart decoration */
+  .bars {
+    position: absolute; bottom: 0;
+    display: flex; align-items: flex-end; gap: 6px;
+    opacity: 0.15;
+  }
+  .bars-left { left: 40px; }
+  .bars-right { right: 40px; }
+  .bar {
+    width: 28px; background: #1a8c8c; border-radius: 4px 4px 0 0;
+  }
+
+  /* Features */
+  .features {
+    padding: 80px 60px;
+    background: #fff;
+  }
+  .features h2 {
+    text-align: center; font-size: 36px; font-weight: 700;
+    color: #1a3a3a; margin-bottom: 12px;
+  }
+  .features-sub {
+    text-align: center; color: #4a6a6a; font-size: 16px;
+    margin-bottom: 50px;
+  }
+  .features-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 28px; max-width: 1000px; margin: 0 auto;
+  }
+  .feature-card {
+    background: #f0f7f7; border-radius: 14px;
+    padding: 28px 24px;
+  }
+  .feature-icon {
+    width: 48px; height: 48px; background: #1a8c8c;
+    border-radius: 12px; display: flex; align-items: center;
+    justify-content: center; margin-bottom: 16px; font-size: 22px;
+  }
+  .feature-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .feature-card p { font-size: 14px; color: #4a6a6a; line-height: 1.6; }
+
+  /* Stats */
+  .stats {
+    background: #1a8c8c; padding: 60px;
+    display: flex; justify-content: center; gap: 80px; flex-wrap: wrap;
+  }
+  .stat { text-align: center; color: #fff; }
+  .stat-num { font-size: 42px; font-weight: 800; }
+  .stat-label { font-size: 14px; opacity: 0.8; margin-top: 4px; }
+
+  /* CTA */
+  .cta {
+    padding: 80px 60px; text-align: center;
+    background: #f0f7f7;
+  }
+  .cta h2 { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+  .cta p { font-size: 16px; color: #4a6a6a; margin-bottom: 32px; }
+
+  /* Footer */
+  footer {
+    background: #1a3a3a; color: #8aacac;
+    text-align: center; padding: 24px;
+    font-size: 13px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round">
+        <polyline points="3,17 9,11 13,15 21,7"/>
+      </svg>
+    </div>
+    <span class="logo-name">BearingWatch</span>
+  </div>
+  <div class="nav-links">
+    <a href="#features">Features</a>
+    <a href="#stats">About</a>
+    <a href="/login" class="btn-login">Login</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="bars bars-left">
+    <div class="bar" style="height:80px"></div>
+    <div class="bar" style="height:120px"></div>
+    <div class="bar" style="height:60px"></div>
+    <div class="bar" style="height:140px"></div>
+    <div class="bar" style="height:100px"></div>
+  </div>
+
+  <div class="hero-badge">India's smartest bearing price intelligence platform</div>
+  <h1>Track. Compete.<br><span>Win on Amazon India.</span></h1>
+  <p>Monitor competitor prices, detect Buy Box shifts, and get real-time alerts — all in one powerful dashboard built for bearing distributors.</p>
+  <div class="hero-btns">
+    <a href="/register" class="btn-primary">Get Started Free</a>
+    <a href="/login" class="btn-secondary">Login</a>
+  </div>
+
+  <div class="bars bars-right">
+    <div class="bar" style="height:60px"></div>
+    <div class="bar" style="height:100px"></div>
+    <div class="bar" style="height:140px"></div>
+    <div class="bar" style="height:80px"></div>
+    <div class="bar" style="height:120px"></div>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <h2>Everything you need to stay ahead</h2>
+  <p class="features-sub">Built specifically for SKF bearing distributors on Amazon.in</p>
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">📊</div>
+      <h3>Real-time price tracking</h3>
+      <p>Monitor SKF bearing prices across all sellers every 60 minutes automatically.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🏆</div>
+      <h3>Buy Box intelligence</h3>
+      <p>Know exactly who holds the Buy Box and at what price — by PIN code location.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🔔</div>
+      <h3>Instant price alerts</h3>
+      <p>Get notified the moment a competitor drops prices significantly below yours.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">📈</div>
+      <h3>Historical trends</h3>
+      <p>Analyze price history over time to predict competitor pricing strategies.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">🗺️</div>
+      <h3>Location-based tracking</h3>
+      <p>Simulate buyer locations across Tamil Nadu PIN codes for accurate Buy Box detection.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">⚡</div>
+      <h3>Automated scraping</h3>
+      <p>Powered by Playwright — bypasses anti-bot protection for reliable data collection.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Stats -->
+<section class="stats" id="stats">
+  <div class="stat">
+    <div class="stat-num">42+</div>
+    <div class="stat-label">ASINs tracked</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">18+</div>
+    <div class="stat-label">Active sellers monitored</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">60 min</div>
+    <div class="stat-label">Update frequency</div>
+  </div>
+  <div class="stat">
+    <div class="stat-num">100%</div>
+    <div class="stat-label">Real Amazon data</div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Ready to outsmart your competitors?</h2>
+  <p>Join bearing distributors already using BearingWatch to win on Amazon India.</p>
+  <a href="/register" class="btn-primary">Start for free</a>
+</section>
+
+<footer>
+  &copy; 2026 BearingWatch · Built for Nisargasoft Hackathon
+</footer>
+
+</body>
+</html>
