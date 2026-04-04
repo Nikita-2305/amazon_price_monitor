@@ -1,7 +1,6 @@
 import csv
 import os
 from datetime import datetime
-from db.models import get_session, PriceSnapshot, create_tables
 
 
 class CSVPipeline:
@@ -23,14 +22,17 @@ class CSVPipeline:
         spider.logger.info(f"CSV: saved to {self.filename}")
 
     def process_item(self, item, spider):
-        self.writer.writerow(item)
+        self.writer.writerow(dict(item))
         return item
 
 
 class PostgreSQLPipeline:
     def open_spider(self, spider):
-        create_tables()
-        self.session = get_session()
+        import sys
+        sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        from db.models import SessionLocal, PriceSnapshot
+        self.SessionLocal = SessionLocal
+        self.PriceSnapshot = PriceSnapshot
         self.batch = []
         self.batch_size = 20
         spider.logger.info("PostgreSQL pipeline opened")
@@ -38,7 +40,6 @@ class PostgreSQLPipeline:
     def close_spider(self, spider):
         if self.batch:
             self._flush_batch()
-        self.session.close()
         spider.logger.info("PostgreSQL pipeline closed")
 
     def process_item(self, item, spider):
@@ -47,7 +48,7 @@ class PostgreSQLPipeline:
             if isinstance(scraped_at, str):
                 scraped_at = datetime.fromisoformat(scraped_at)
 
-            record = PriceSnapshot(
+            record = self.PriceSnapshot(
                 asin=item.get("asin", ""),
                 product_title=item.get("product_title", "")[:500],
                 model=item.get("model", ""),
@@ -71,12 +72,15 @@ class PostgreSQLPipeline:
         return item
 
     def _flush_batch(self):
+        db = self.SessionLocal()
         try:
-            self.session.bulk_save_objects(self.batch)
-            self.session.commit()
+            db.bulk_save_objects(self.batch)
+            db.commit()
             print(f"✅ Saved {len(self.batch)} records to PostgreSQL")
             self.batch = []
         except Exception as e:
-            self.session.rollback()
+            db.rollback()
             print(f"❌ Batch save failed: {e}")
             self.batch = []
+        finally:
+            db.close()

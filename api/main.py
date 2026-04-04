@@ -22,7 +22,7 @@ pwd_context = CryptContext(
     deprecated="auto"
 )
 
-sessions = {}  # ✅ FIX: missing in your code
+sessions = {}
 
 # ── Seller DB model ───────────────────────────────────
 Base = declarative_base()
@@ -71,8 +71,8 @@ async def login_post(
     password: str = Form(...)
 ):
     try:
-        email = email.strip().lower()      # ✅ FIX
-        password = password.strip()        # ✅ FIX
+        email = email.strip().lower()
+        password = password.strip()
 
         seller = get_seller(email)
 
@@ -100,7 +100,12 @@ async def login_post(
             )
 
         token = secrets.token_hex(32)
-        sessions[token] = {"email": email, "name": seller.name}
+        # ✅ FIX 2 & 3: Store name, email, and company in session
+        sessions[token] = {
+            "email": email,
+            "name": seller.name,
+            "company": seller.company or "",
+        }
 
         response = RedirectResponse(url="/dashboard", status_code=302)
         response.set_cookie("session_token", token, httponly=True, max_age=86400)
@@ -130,8 +135,8 @@ async def register_post(
     password: str = Form(...)
 ):
     try:
-        email = email.strip().lower()      # ✅ FIX
-        password = password.strip()        # ✅ FIX
+        email = email.strip().lower()
+        password = password.strip()
 
         existing = get_seller(email)
         if existing:
@@ -169,7 +174,31 @@ async def dashboard(request: Request):
     token = request.cookies.get("session_token")
     if not token or token not in sessions:
         return RedirectResponse(url="/login")
-    return RedirectResponse(url="http://localhost:8501", status_code=302)
+    # ✅ FIX 2 & 3: Pass seller name and email to Streamlit via query params
+    session = sessions[token]
+    seller_name = session.get("name", "Seller")
+    seller_email = session.get("email", "")
+    redirect_url = (
+        f"http://localhost:8501"
+        f"?seller_name={seller_name}"
+        f"&seller_email={seller_email}"
+        f"&token={token}"
+    )
+    return RedirectResponse(url=redirect_url, status_code=302)
+
+# ✅ FIX 2 & 3: New API endpoint — Streamlit calls this to get session info
+@app.get("/api/session")
+async def get_session_info(request: Request):
+    token = request.query_params.get("token") or request.cookies.get("session_token")
+    if not token or token not in sessions:
+        return {"authenticated": False, "name": "", "email": "", "company": ""}
+    session = sessions[token]
+    return {
+        "authenticated": True,
+        "name": session.get("name", ""),
+        "email": session.get("email", ""),
+        "company": session.get("company", ""),
+    }
 
 @app.get("/logout")
 async def logout(request: Request):

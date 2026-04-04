@@ -5,9 +5,10 @@ import plotly.graph_objects as go
 from datetime import datetime
 import sys
 import os
+import requests as http_requests
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db.models import engine
-from api.alerts import PRICE_FLOORS, check_price_floors, check_and_alert_price_drop 
+from api.alerts import PRICE_FLOORS, check_price_floors, check_and_alert_price_drop
 from api.ai_recommendations import (
     get_ai_recommendation,
     get_competitor_analysis,
@@ -52,6 +53,21 @@ st.markdown("""
         color: rgba(255,255,255,0.8) !important;
         font-size: 13px !important;
         margin: 0 !important;
+    }
+    .bw-header .seller-badge {
+        background: rgba(255,255,255,0.2);
+        border-radius: 8px;
+        padding: 8px 16px;
+        color: white;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: right;
+    }
+    .bw-header .seller-badge small {
+        display: block;
+        font-size: 11px;
+        font-weight: 400;
+        opacity: 0.8;
     }
     /* Metric cards */
     .metric-box {
@@ -147,6 +163,48 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
+# ── FIX 2 & 3: Resolve logged-in seller info ─────────
+def get_seller_info():
+    """
+    Read seller name and email from URL query params (set by FastAPI redirect).
+    Falls back to session state if already loaded.
+    """
+    params = st.query_params
+    name = params.get("seller_name", "")
+    email = params.get("seller_email", "")
+    token = params.get("token", "")
+
+    # If not in URL params, try fetching from API using stored token
+    if not name and not email:
+        token = st.session_state.get("session_token", "")
+        if token:
+            try:
+                resp = http_requests.get(
+                    f"http://localhost:8000/api/session?token={token}",
+                    timeout=3
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    if data.get("authenticated"):
+                        name = data.get("name", "")
+                        email = data.get("email", "")
+            except Exception:
+                pass
+
+    # Persist in session state so page reruns don't lose it
+    if name:
+        st.session_state["seller_name"] = name
+    if email:
+        st.session_state["seller_email"] = email
+    if token:
+        st.session_state["session_token"] = token
+
+    return (
+        st.session_state.get("seller_name", "Seller"),
+        st.session_state.get("seller_email", ""),
+    )
+
+
 # ── Load data ─────────────────────────────────────────
 @st.cache_data(ttl=300)
 def load_data():
@@ -159,12 +217,19 @@ def load_data():
 
 
 def main():
-    # Header
-    st.markdown("""
+    # ✅ FIX 2: Get logged-in seller name and email
+    seller_name, seller_email = get_seller_info()
+
+    # ✅ FIX 2: Show seller name in the dashboard header
+    st.markdown(f"""
     <div class="bw-header">
         <div>
             <h1>🔩 BearingWatch</h1>
             <p>Amazon.in · Karnataka (Bengaluru, Mysuru, Hubli, Dharwad, Belagavi) · Real-time monitoring</p>
+        </div>
+        <div class="seller-badge">
+            👤 {seller_name}
+            <small>{seller_email}</small>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -179,8 +244,11 @@ def main():
     df = df[df["price"] > 0]
 
     # ── Sidebar ───────────────────────────────────────
-    st.sidebar.image("https://via.placeholder.com/200x60/1a8c8c/ffffff?text=BearingWatch",
-                     use_column_width=True)
+    st.sidebar.image("logo1.png", use_container_width=True)
+    # ✅ FIX 2: Show seller name in sidebar too
+    st.sidebar.markdown(f"**👤 {seller_name}**")
+    if seller_email:
+        st.sidebar.caption(seller_email)
     st.sidebar.markdown("---")
 
     models = ["All"] + sorted(df["model"].dropna().unique().tolist())
@@ -394,10 +462,10 @@ def main():
                     unsafe_allow_html=True)
         drops = []
 
-        sellers = filtered["seller_name"].dropna().unique()
+        all_sellers = filtered["seller_name"].dropna().unique()
 
-        for seller in sellers:
-            seller_email = "test@example.com"  # temporary (or fetch from DB)
+        for seller in all_sellers:
+            # ✅ FIX 3: Use logged-in seller email automatically instead of hardcoded value
             alerts = check_and_alert_price_drop(filtered, seller_email, seller)
             drops.extend(alerts)
         if drops:
@@ -429,7 +497,12 @@ def main():
         st.markdown('<div class="section-head">Send Manual Alert Email</div>',
                     unsafe_allow_html=True)
         with st.form("email_form"):
-            email_to = st.text_input("Recipient email")
+            # ✅ FIX 3: Pre-fill recipient email with logged-in seller's email
+            email_to = st.text_input(
+                "Recipient email",
+                value=seller_email,
+                help="Auto-filled from your account. You can change it if needed.",
+            )
             email_subject = st.text_input("Subject",
                                           value="BearingWatch Price Alert")
             email_body = st.text_area("Message")
@@ -529,13 +602,40 @@ def main():
     with tab4:
         st.markdown('<div class="section-head">Profit Optimization Calculator</div>',
                     unsafe_allow_html=True)
+
+        # ✅ FIX 4: Auto-populate cost price from live market data
+        # Get the lowest price in the DB for the selected model as a smart default
+        if not df.empty:
+            # Use avg of buy-box winners as a proxy for market cost reference
+            bb_prices = df[df["is_buy_box_winner"] == True]["price"]
+            auto_cost_default = int(bb_prices.min() * 0.65) if not bb_prices.empty else 400
+            auto_cost_default = max(10, min(auto_cost_default, 9990))  # clamp to widget range
+        else:
+            auto_cost_default = 400
+
         col1, col2 = st.columns([1, 2])
         with col1:
-            cost = st.number_input("Cost price (₹)", min_value=10,
-                                   max_value=10000, value=400, step=10)
-            overhead = st.number_input("Overhead per unit (₹)",
-                                       min_value=0, max_value=500,
-                                       value=20, step=5)
+            # ✅ FIX 4: Show info about auto-populated value
+            if not df.empty and not bb_prices.empty:
+                st.info(
+                    f"💡 Cost price auto-estimated from market data "
+                    f"(lowest buy-box: ₹{int(bb_prices.min())}). Adjust as needed."
+                )
+
+            cost = st.number_input(
+                "Cost price (₹)",
+                min_value=10,
+                max_value=10000,
+                value=auto_cost_default,   # ✅ FIX 4: auto-populated
+                step=10,
+            )
+            overhead = st.number_input(
+                "Overhead per unit (₹)",
+                min_value=0,
+                max_value=500,
+                value=20,
+                step=5,
+            )
             total_cost = cost + overhead
             st.markdown(f"""
             <div class="metric-box" style="margin-top:12px;">
@@ -543,6 +643,20 @@ def main():
                 <div class="value">₹{total_cost}</div>
             </div>
             """, unsafe_allow_html=True)
+
+            # ✅ FIX 4: Show current market context automatically
+            if not df.empty:
+                st.markdown("---")
+                st.markdown("**📊 Live Market Reference**")
+                for mdl in sorted(df["model"].dropna().unique()):
+                    mdl_prices = df[df["model"] == mdl]["price"]
+                    if not mdl_prices.empty:
+                        st.markdown(
+                            f"SKF **{mdl}** — "
+                            f"Min: ₹{mdl_prices.min():.0f} | "
+                            f"Avg: ₹{mdl_prices.mean():.0f} | "
+                            f"Max: ₹{mdl_prices.max():.0f}"
+                        )
 
         with col2:
             prices = list(range(
@@ -577,6 +691,17 @@ def main():
                 line_dash="dot", line_color="#9a6600",
                 annotation_text="25% margin",
             )
+
+            # ✅ FIX 4: Mark the current average market price on the chart
+            if not df.empty:
+                market_avg = df["price"].mean()
+                fig5.add_vline(
+                    x=market_avg,
+                    line_dash="solid", line_color="#1a8c8c",
+                    annotation_text=f"Market avg ₹{market_avg:.0f}",
+                    annotation_font_color="#1a8c8c",
+                )
+
             fig5.update_layout(
                 height=350,
                 paper_bgcolor="white",
