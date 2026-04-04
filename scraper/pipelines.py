@@ -1,12 +1,7 @@
 import csv
 import os
 from datetime import datetime
-
-try:
-    from db.models import get_session, PriceSnapshot, create_tables
-    _DB_AVAILABLE = True
-except Exception:
-    _DB_AVAILABLE = False
+from db.models import get_session, PriceSnapshot, create_tables
 
 
 class CSVPipeline:
@@ -34,12 +29,6 @@ class CSVPipeline:
 
 class PostgreSQLPipeline:
     def open_spider(self, spider):
-        if not _DB_AVAILABLE:
-            spider.logger.warning("PostgreSQL not available — skipping DB pipeline")
-            self.session = None
-            self.batch = []
-            self.batch_size = 20
-            return
         create_tables()
         self.session = get_session()
         self.batch = []
@@ -47,16 +36,12 @@ class PostgreSQLPipeline:
         spider.logger.info("PostgreSQL pipeline opened")
 
     def close_spider(self, spider):
-        if not self.session:
-            return
         if self.batch:
             self._flush_batch()
         self.session.close()
         spider.logger.info("PostgreSQL pipeline closed")
 
     def process_item(self, item, spider):
-        if not self.session:
-            return item
         try:
             scraped_at = item.get("scraped_at")
             if isinstance(scraped_at, str):

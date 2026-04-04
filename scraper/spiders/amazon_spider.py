@@ -43,10 +43,12 @@ class AmazonBearingSpider(scrapy.Spider):
             self.logger.warning(f"CAPTCHA detected for {model}")
             return
 
-        products = response.css("div.s-result-item[data-asin]")
+        products = response.css(
+            "div[data-asin][data-component-type='s-search-result']"
+        )
 
         # 🔥 DEBUG LINE ADDED
-        print("🔥 DEBUG: HTML LENGTH =", len(response.text))
+        print("🔥 DEBUG: Found products count =", len(products))
 
         self.logger.info(f"Found {len(products)} products for SKF {model}")
 

@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from db.models import engine
-from api.alerts import PRICE_FLOORS, check_price_floors, check_price_drops
+from api.alerts import PRICE_FLOORS, check_price_floors, check_and_alert_price_drop 
 from api.ai_recommendations import (
     get_ai_recommendation,
     get_competitor_analysis,
@@ -392,24 +392,31 @@ def main():
 
         st.markdown('<div class="section-head">Price Drop Alerts</div>',
                     unsafe_allow_html=True)
-        drops = check_price_drops(filtered)
+        drops = []
+
+        sellers = filtered["seller_name"].dropna().unique()
+
+        for seller in sellers:
+            seller_email = "test@example.com"  # temporary (or fetch from DB)
+            alerts = check_and_alert_price_drop(filtered, seller_email, seller)
+            drops.extend(alerts)
         if drops:
             for d in drops[:5]:
                 pct = d.get("drop_pct", 0)
                 if pct > 15:
                     st.markdown(f"""
                     <div class="alert-critical">
-                    🚨 <b>{d['seller']}</b> — SKF {d['model']}
-                    at ₹{d['price']:.0f} is {pct:.1f}% below market avg
-                    ₹{d['avg']:.0f}
+                    🚨 <b>{d['competitor']}</b> — SKF {d['model']}
+                    at ₹{d['competitor_price']:.0f} is {pct:.1f}% below market avg
+                    ₹{d['my_price']:.0f}
                     </div>
                     """, unsafe_allow_html=True)
                 else:
                     st.markdown(f"""
                     <div class="alert-warning">
-                    ⚠️ <b>{d['seller']}</b> — SKF {d['model']}
-                    at ₹{d['price']:.0f} is {pct:.1f}% below market avg
-                    ₹{d['avg']:.0f}
+                    ⚠️ <b>{d['competitor']}</b> — SKF {d['model']}
+                    at ₹{d['competitor_price']:.0f} is {pct:.1f}% below market avg
+                    ₹{d['my_price']:.0f}
                     </div>
                     """, unsafe_allow_html=True)
         else:
