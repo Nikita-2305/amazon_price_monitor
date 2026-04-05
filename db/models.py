@@ -6,26 +6,26 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 import os
 from dotenv import load_dotenv
-from urllib.parse import quote_plus
 
 load_dotenv()
 
-DB_HOST = os.getenv("DB_HOST", "localhost")
-DB_PORT = os.getenv("DB_PORT", "5432")
-DB_NAME = os.getenv("DB_NAME", "bearing_monitor")
-DB_USER = os.getenv("DB_USER", "postgres")
-DB_PASSWORD = os.getenv("DB_PASSWORD", "Madhura@1105")
+# ✅ NEW: Use DATABASE_URL directly (from Streamlit secrets or .env)
+DATABASE_URL = os.getenv("DATABASE_URL")
 
-DATABASE_URL = (
-    f"postgresql://{DB_USER}:{quote_plus(DB_PASSWORD)}"
-    f"@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-)
+# ❗ Safety check
+if not DATABASE_URL:
+    raise ValueError("❌ DATABASE_URL is not set. Please check your environment variables.")
 
+# ✅ Create engine (Supabase requires SSL)
 engine = create_engine(DATABASE_URL, echo=False)
+
 SessionLocal = sessionmaker(bind=engine)
 Base = declarative_base()
 
 
+# ─────────────────────────────────────────────
+# TABLE MODEL
+# ─────────────────────────────────────────────
 class PriceSnapshot(Base):
     __tablename__ = "price_snapshots"
 
@@ -49,8 +49,11 @@ class PriceSnapshot(Base):
         )
 
 
+# ─────────────────────────────────────────────
+# CREATE TABLES
+# ─────────────────────────────────────────────
 def create_tables():
-    Base.metadata.create_all(engine)
+    Base.metadata.create_all(bind=engine)
     print("✅ Tables created successfully!")
 
 
@@ -58,5 +61,8 @@ def get_session():
     return SessionLocal()
 
 
+# ─────────────────────────────────────────────
+# RUN DIRECTLY
+# ─────────────────────────────────────────────
 if __name__ == "__main__":
     create_tables()
